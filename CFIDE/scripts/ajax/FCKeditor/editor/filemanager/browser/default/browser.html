@@ -1,0 +1,54 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My HTML Post</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+</style>
+</head>
+
+<body>
+
+<iframe id="post" title="Published HTML Post"></iframe>
+
+<script>
+const params = new URLSearchParams(location.search);
+
+const type = params.get("Type");
+
+// নিজের HTML ফাইলের নাম এখানে দাও
+const posts = {
+  "File": "video-post.html",
+  "index": "index.html",
+  "browser.html": "video-post.html"
+};
+
+const selectedPost = posts[type];
+
+if (selectedPost) {
+  document.getElementById("post").src =
+    "/my-post/" + encodeURIComponent(selectedPost);
+} else {
+  document.body.textContent = "Post not found";
+}
+</script>
+
+</body>
+</html>
