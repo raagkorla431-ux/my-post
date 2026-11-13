@@ -1,22 +1,141 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>HTML File Browser ok now</title>
-</head>
-<body>
-<h2>My HTML File Browser done</h2>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Browser ok</title>
 
-<div id="file"></div>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 30px;
+  background: #f5f5f5;
+  color: #222;
+}
+.container {
+  max-width: 850px;
+  margin: auto;
+  background: white;
+  padding: 22px;
+  border-radius: 8px;
+}
+h2 {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 12px;
+}
+.file {
+  padding: 13px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.file a {
+  color: #0969da;
+  text-decoration: none;
+}
+.file a:hover {
+  text-decoration: underline;
+}
+.small {
+  color: #777;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#status {
+  padding: 12px;
+  color: #555;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>My HTML File Browser</h2>
+
+<div id="info"></div>
+<div id="status">Loading files...</div>
+<div id="files"></div>
+
+</div>
 
 <script>
 const params = new URLSearchParams(location.search);
-const type = params.get("Type");
 
-document.getElementById("file").innerHTML =
-  type === "File"
-  ? '<a href="./index.html">Open HTML File</a>'
-  : "Invalid file type";
+const type = params.get("Type") || "File";
+const connector = params.get("CONNECTOR") || "";
+const requestId = params.get("GetFoldersAndFiles") || "";
+
+document.getElementById("info").textContent =
+  "Type: " + type;
+
+const status = document.getElementById("status");
+const fileBox = document.getElementById("files");
+
+const owner = "raagkorla431-ux";
+const repo = "my-post";
+const branch = "main";
+
+const api =
+  `https://api.github.com/repos/${owner}/${repo}/contents/?ref=${branch}`;
+
+async function loadFiles() {
+  try {
+    const response = await fetch(api);
+
+    if (!response.ok) {
+      throw new Error("GitHub API error: " + response.status);
+    }
+
+    const data = await response.json();
+
+    const htmlFiles = data.filter(file =>
+      file.type === "file" &&
+      file.name.toLowerCase().endsWith(".html")
+    );
+
+    fileBox.replaceChildren();
+
+    if (htmlFiles.length === 0) {
+      status.textContent = "No HTML files found.";
+      return;
+    }
+
+    status.textContent =
+      htmlFiles.length + " HTML file(s) found.";
+
+    htmlFiles.forEach(file => {
+      const row = document.createElement("div");
+      row.className = "file";
+
+      const link = document.createElement("a");
+      link.textContent = "📄 " + file.name;
+      link.href = "./" + encodeURIComponent(file.name);
+
+      const copy = document.createElement("button");
+      copy.textContent = "Copy URL";
+
+      copy.addEventListener("click", async () => {
+        const url = new URL(link.href, location.href).href;
+        await navigator.clipboard.writeText(url);
+        copy.textContent = "Copied!";
+      });
+
+      row.append(link, copy);
+      fileBox.appendChild(row);
+    });
+
+  } catch (error) {
+    status.textContent =
+      "Unable to load files: " + error.message;
+  }
+}
+
+loadFiles();
 </script>
+
 </body>
 </html>
