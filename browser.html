@@ -3,136 +3,175 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>File Browser ok</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub File Browser</title>
 <style>
 body {
   font-family: Arial, sans-serif;
-  margin: 30px;
-  background: #f5f5f5;
-  color: #222;
+  background: #f5f6f8;
+  margin: 25px;
 }
 .container {
-  max-width: 850px;
+  max-width: 900px;
   margin: auto;
   background: white;
   padding: 22px;
-  border-radius: 8px;
+  border-radius: 9px;
 }
-h2 {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 12px;
+h2 { border-bottom: 1px solid #ddd; padding-bottom: 14px; }
+input {
+  width: 95%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 .file {
-  padding: 13px;
+  padding: 14px 5px;
   border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 .file a {
   color: #0969da;
   text-decoration: none;
-}
-.file a:hover {
-  text-decoration: underline;
-}
-.small {
-  color: #777;
-  font-size: 12px;
   overflow-wrap: anywhere;
 }
-#status {
-  padding: 12px;
-  color: #555;
+.file a:hover { text-decoration: underline; }
+.path {
+  color: #777;
+  font-size: 12px;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
 }
+button {
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background: #fff;
+}
+#status { margin: 15px 0; color: #555; }
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<h2>My HTML File Browser</h2>
+<h2>GitHub HTML File Browser</h2>
 
-<div id="info"></div>
+<input id="search" type="search"
+placeholder="Search HTML files...">
+
 <div id="status">Loading files...</div>
 <div id="files"></div>
 
 </div>
 
 <script>
+const owner = "raagkorla431-ux";
+const repo = "my-post";
+const branch = "main";
+
 const params = new URLSearchParams(location.search);
 
 const type = params.get("Type") || "File";
 const connector = params.get("CONNECTOR") || "";
 const requestId = params.get("GetFoldersAndFiles") || "";
 
-document.getElementById("info").textContent =
-  "Type: " + type;
+let allFiles = [];
 
 const status = document.getElementById("status");
 const fileBox = document.getElementById("files");
-
-const owner = "raagkorla431-ux";
-const repo = "my-post";
-const branch = "main";
-
-const api =
-  `https://api.github.com/repos/${owner}/${repo}/contents/?ref=${branch}`;
+const search = document.getElementById("search");
 
 async function loadFiles() {
   try {
+    const api =
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+
     const response = await fetch(api);
 
     if (!response.ok) {
-      throw new Error("GitHub API error: " + response.status);
+      throw new Error("GitHub API: " + response.status);
     }
 
-    const data = await response.json();
+    const result = await response.json();
 
-    const htmlFiles = data.filter(file =>
-      file.type === "file" &&
-      file.name.toLowerCase().endsWith(".html")
+    if (result.truncated) {
+      throw new Error("Repository tree was truncated.");
+    }
+
+    allFiles = result.tree.filter(item =>
+      item.type === "blob" &&
+      /\.(html?|HTML?)$/.test(item.path)
     );
 
-    fileBox.replaceChildren();
-
-    if (htmlFiles.length === 0) {
-      status.textContent = "No HTML files found.";
-      return;
-    }
-
     status.textContent =
-      htmlFiles.length + " HTML file(s) found.";
+      allFiles.length + " HTML files found.";
 
-    htmlFiles.forEach(file => {
-      const row = document.createElement("div");
-      row.className = "file";
-
-      const link = document.createElement("a");
-      link.textContent = "📄 " + file.name;
-      link.href = "./" + encodeURIComponent(file.name);
-
-      const copy = document.createElement("button");
-      copy.textContent = "Copy URL";
-
-      copy.addEventListener("click", async () => {
-        const url = new URL(link.href, location.href).href;
-        await navigator.clipboard.writeText(url);
-        copy.textContent = "Copied!";
-      });
-
-      row.append(link, copy);
-      fileBox.appendChild(row);
-    });
+    renderFiles(allFiles);
 
   } catch (error) {
-    status.textContent =
-      "Unable to load files: " + error.message;
+    status.textContent = error.message;
   }
 }
+
+function renderFiles(files) {
+  fileBox.replaceChildren();
+
+  if (!files.length) {
+    status.textContent = "No matching HTML files found.";
+    return;
+  }
+
+  files.forEach(file => {
+    const row = document.createElement("div");
+    row.className = "file";
+
+    const link = document.createElement("a");
+
+    const encodedPath = file.path
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+
+    link.href =
+      `https://${owner}.github.io/${repo}/${encodedPath}`;
+
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "📄 " + file.path;
+
+    const path = document.createElement("div");
+    path.className = "path";
+    path.textContent = "Path: " + file.path;
+
+    const copy = document.createElement("button");
+    copy.textContent = "Copy URL";
+
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(link.href);
+        copy.textContent = "Copied!";
+      } catch {
+        copy.textContent = "Copy unavailable";
+      }
+    };
+
+    row.append(link, path, copy);
+    fileBox.appendChild(row);
+  });
+
+  status.textContent = files.length + " HTML files found.";
+}
+
+search.addEventListener("input", () => {
+  const keyword = search.value.toLowerCase();
+
+  const filtered = allFiles.filter(file =>
+    file.path.toLowerCase().includes(keyword)
+  );
+
+  renderFiles(filtered);
+});
 
 loadFiles();
 </script>
