@@ -3,138 +3,129 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>My HTML Posts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML Post Viewer</title>
+
 <style>
-body {
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
   font-family: Arial, sans-serif;
-  margin: 25px;
-  background: #f5f5f5;
 }
-.container {
-  max-width: 900px;
-  margin: auto;
-  background: white;
+
+#status {
   padding: 20px;
-  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  color: #555;
 }
-input {
-  width: 95%;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-.file {
-  padding: 14px 5px;
-  border-bottom: 1px solid #ddd;
-}
-.file a {
-  color: #0969da;
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-.path {
-  color: #777;
-  font-size: 12px;
-  margin-top: 5px;
+
+#postFrame {
+  width: 100%;
+  height: 100vh;
+  border: none;
+  display: block;
 }
 </style>
 </head>
+
 <body>
 
-<div class="container">
-<h2>My HTML Posts</h2>
-
-<input id="search" placeholder="Search posts...">
-<p id="status">Loading posts...</p>
-<div id="files"></div>
-</div>
+<div id="status">Loading post...</div>
 
 <script>
-const owner = "raagkorla431-ux";
-const repo = "my-post";
-const branch = "main";
+(function () {
 
-const params = new URLSearchParams(location.search);
-const type = params.get("Type") || "File";
+  const params = new URLSearchParams(
+    window.location.search
+  );
 
-const status = document.getElementById("status");
-const filesBox = document.getElementById("files");
-const search = document.getElementById("search");
+  // Get HTML filename from Type
+  const filename = params.get("Type");
 
-let posts = [];
+  // Your GitHub Pages details
+  const owner = "raagkorla431-ux";
+  const repo = "my-post";
 
-async function loadPosts() {
-  try {
-    const api =
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+  const status = document.getElementById("status");
 
-    const response = await fetch(api);
-
-    if (!response.ok) {
-      throw new Error("GitHub API error: " + response.status);
-    }
-
-    const data = await response.json();
-
-    if (data.truncated) {
-      throw new Error("Repository file list is too large.");
-    }
-
-    posts = data.tree.filter(item =>
-      item.type === "blob" &&
-      item.path.startsWith("posts/") &&
-      /\.(html?|HTML?)$/.test(item.path)
-    );
-
-    showPosts(posts);
-
-  } catch (error) {
-    status.textContent = error.message;
+  // Validate filename
+  if (
+    !filename ||
+    filename.includes("/") ||
+    filename.includes("\\") ||
+    !/^[a-zA-Z0-9._-]+\.html?$/i.test(filename)
+  ) {
+    status.textContent = "Invalid HTML filename.";
+    return;
   }
-}
 
-function showPosts(items) {
-  filesBox.replaceChildren();
+  // Find the requested file inside the repository
+  async function loadPost() {
 
-  status.textContent = items.length + " HTML posts found.";
+    try {
 
-  items.forEach(file => {
-    const row = document.createElement("div");
-    row.className = "file";
+      const api =
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`;
 
-    const link = document.createElement("a");
+      const response = await fetch(api);
 
-    const encodedPath = file.path
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/");
+      if (!response.ok) {
+        throw new Error("Unable to access repository.");
+      }
 
-    link.href =
-      `https://${owner}.github.io/${repo}/${encodedPath}`;
+      const data = await response.json();
 
-    link.textContent = "📄 " + file.path;
-    link.target = "_blank";
-    link.rel = "noopener";
+      if (data.truncated) {
+        throw new Error("Repository file list is too large.");
+      }
 
-    const path = document.createElement("div");
-    path.className = "path";
-    path.textContent = "Open published HTML post";
+      // Find matching HTML file by exact filename
+      const file = data.tree.find(item =>
+        item.type === "blob" &&
+        item.path.split("/").pop() === filename &&
+        /\.html?$/i.test(item.path)
+      );
 
-    row.append(link, path);
-    filesBox.appendChild(row);
-  });
-}
+      if (!file) {
+        throw new Error("HTML file not found: " + filename);
+      }
 
-search.addEventListener("input", () => {
-  const q = search.value.toLowerCase();
+      // Build GitHub Pages URL
+      const filePath = file.path
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
 
-  showPosts(posts.filter(file =>
-    file.path.toLowerCase().includes(q)
-  ));
-});
+      const fileURL =
+        `https://${owner}.github.io/${repo}/${filePath}`;
 
-loadPosts();
+      // Display post directly
+      const frame = document.createElement("iframe");
+
+      frame.id = "postFrame";
+      frame.title = "HTML Post";
+      frame.src = fileURL;
+
+      status.remove();
+      document.body.appendChild(frame);
+
+    } catch (error) {
+
+      status.textContent = error.message;
+
+    }
+
+  }
+
+  loadPost();
+
+})();
 </script>
 
 </body>
