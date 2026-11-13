@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>HTML File Browser</title>
+</head>
+<body>
+<h2>My HTML File Browser</h2>
+
+<div id="file"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const type = params.get("Type");
+
+document.getElementById("file").innerHTML =
+  type === "File"
+  ? '<a href="./index.html">Open HTML File</a>'
+  : "Invalid file type";
+</script>
+</body>
+</html>
